@@ -1,0 +1,11 @@
+{:paths   ["src"]
+ :deps
+ {org.clojure/clojure               {:mvn/version "1.10.1"}
+  clj-http/clj-http                 {:mvn/version "3.12.1"}
+  cheshire/cheshire                 {:mvn/version "5.10.0"}
+  environ/environ                   {:mvn/version "1.2.0"}
+  clj-commons/iapetos               {:mvn/version "0.1.11"}}
+
+ :aliases {:test {:extra-paths ["test"]
+                  :extra-deps  {lambdaisland/kaocha {:mvn/version "0.0-529"}}
+                  :main-opts   ["-m" "kaocha.runner"]}}}

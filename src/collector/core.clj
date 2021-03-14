@@ -1,4 +1,5 @@
 (ns collector.core
+  (:gen-class)
   (:require [clj-http.client :as client]
             [cheshire.core :refer :all]
             [iapetos.core :as prometheus]
@@ -96,21 +97,25 @@
   (let [metric-server (standalone/metrics-server registry {:port server-port})
         tokens (get-tokens refresh "refresh_token")
         refresh (get tokens :refresh_token)
-        access_token (get tokens :access_token)
-        sensor-data (get-sensors access_token)]
-    (loop []
-      (let [sensors (mapv #(parse-metrics %) sensor-data)]
-        (doseq [sensor sensors]
-          (let [metrics (sensor :metrics)]
-            (when (:temperature metrics)
-              (prometheus/observe registry :ecobee/temperature {:sensor-name (:name sensor)} (:temperature metrics)))
-            (when (:humidity metrics)
-              (prometheus/observe registry :ecobee/humidity {:sensor-name (:name sensor)} (:humidity metrics)))
-            (when (:occupancy metrics)
-              (prometheus/observe registry :ecobee/occupancy {:sensor-name (:name sensor)} (:occupancy metrics))))))
-      (println (export/text-format registry))
-      (Thread/sleep (reduce * [1000 60 5]))
-      (recur))))
+        access-token (get tokens :access_token)
+        sensor-data (get-sensors access-token)]
+    (loop [sensor-data sensor-data
+           access-token access-token]
+      (if (some? sensor-data)
+        (do
+          (let [sensors (mapv #(parse-metrics %) sensor-data)]
+            (doseq [sensor sensors]
+              (let [metrics (sensor :metrics)]
+                (when (:temperature metrics)
+                  (prometheus/observe registry :ecobee/temperature {:sensor-name (:name sensor)} (:temperature metrics)))
+                (when (:humidity metrics)
+                  (prometheus/observe registry :ecobee/humidity {:sensor-name (:name sensor)} (:humidity metrics)))
+                (when (:occupancy metrics)
+                  (prometheus/observe registry :ecobee/occupancy {:sensor-name (:name sensor)} (:occupancy metrics))))))
+          (println (export/text-format registry))
+          (Thread/sleep (reduce * [1000 60 5]))
+          (recur (get-sensors access-token) access-token))
+        (recur sensor-data (get-tokens refresh "refresh_token"))))))
 
 (comment
   (-main))

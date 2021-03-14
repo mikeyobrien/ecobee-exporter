@@ -43,10 +43,11 @@
        sensor-humidity
        sensor-occupancy)))
 
-
 (defn get-auth-code
   []
-  (let [req (format "%s/authorize?response_type=ecobeePin&client_id=%s&scope=%s" url-base api-key scope)
+  (let [req (format "%s/authorize?response_type=ecobeePin&client_id=%s&scope=%s"
+                    url-base api-key
+                    scope)
         resp-body (-> (client/get req {:accept :json})
                       :body
                       (parse-string true))]
@@ -68,27 +69,36 @@
                                 :selectionMatch ""
                                 :includeSensors true
                                 :includeRuntime true}}
-        uri (format "%s/1/thermostat?format=json&body=%s" url-base (generate-string req-params))]
-    (-> (client/get uri {:headers {"Authorization" (format "Bearer %s" access-token)}
-                         :as :json})
-        (get-in [:body :thermostatList])
-        (first)
-        :remoteSensors)))
+        uri (format "%s/1/thermostat?format=json&body=%s"
+                    url-base
+                    (generate-string req-params))
+        resp (client/get uri {:headers {"Authorization" (format "Bearer %s"
+                                                                access-token)}
+                              :as :json})]
+    (when (= 200 (:status resp))
+      (-> resp
+          (get-in [:body :thermostatList])
+          (first)
+          :remoteSensors))))
 
 (defn parse-metrics [sensor]
   (let [name (sensor :name)
         metrics (->> (sensor :capability)
-                     (mapcat (fn [metric]
-                               (let [type (metric :type)
-                                     value (metric :value)]
-                                 (cond
-                                   (= type "temperature") {type (-> value
-                                                                    (Integer/parseInt)
-                                                                    (/ 10)
-                                                                    (float))}
-                                   (= type "humidity") {type (-> value
-                                                                 (Integer/parseInt))}
-                                   (= type "occupancy") {type (get {false 0 true 1} (= value "true"))}))))
+                     (mapcat
+                      (fn [metric]
+                        (let [type (metric :type)
+                              value (metric :value)]
+                          (cond
+                            (= type "temperature")
+                            {type (-> value
+                                      (Integer/parseInt)
+                                      (/ 10)
+                                      (float))}
+                            (= type "humidity")
+                            {type (-> value
+                                      (Integer/parseInt))}
+                            (= type "occupancy")
+                            {type (get {false 0 true 1} (= value "true"))}))))
                      (into {})
                      (walk/keywordize-keys))]
     {:name (str/lower-case name) :metrics metrics}))
@@ -107,11 +117,20 @@
             (doseq [sensor sensors]
               (let [metrics (sensor :metrics)]
                 (when (:temperature metrics)
-                  (prometheus/observe registry :ecobee/temperature {:sensor-name (:name sensor)} (:temperature metrics)))
+                  (prometheus/observe registry
+                                      :ecobee/temperature
+                                      {:sensor-name (:name sensor)}
+                                      (:temperature metrics)))
                 (when (:humidity metrics)
-                  (prometheus/observe registry :ecobee/humidity {:sensor-name (:name sensor)} (:humidity metrics)))
+                  (prometheus/observe registry
+                                      :ecobee/humidity
+                                      {:sensor-name (:name sensor)}
+                                      (:humidity metrics)))
                 (when (:occupancy metrics)
-                  (prometheus/observe registry :ecobee/occupancy {:sensor-name (:name sensor)} (:occupancy metrics))))))
+                  (prometheus/observe registry
+                                      :ecobee/occupancy
+                                      {:sensor-name (:name sensor)}
+                                      (:occupancy metrics))))))
           (println (export/text-format registry))
           (Thread/sleep (reduce * [1000 60 5]))
           (recur (get-sensors access-token) access-token))

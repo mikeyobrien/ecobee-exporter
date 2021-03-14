@@ -74,7 +74,8 @@
                     (generate-string req-params))
         resp (client/get uri {:headers {"Authorization" (format "Bearer %s"
                                                                 access-token)}
-                              :as :json})]
+                              :as :json
+                              :throw-exceptions false})]
     (when (= 200 (:status resp))
       (-> resp
           (get-in [:body :thermostatList])
@@ -88,17 +89,14 @@
                       (fn [metric]
                         (let [type (metric :type)
                               value (metric :value)]
-                          (cond
-                            (= type "temperature")
-                            {type (-> value
-                                      (Integer/parseInt)
-                                      (/ 10)
-                                      (float))}
-                            (= type "humidity")
-                            {type (-> value
-                                      (Integer/parseInt))}
-                            (= type "occupancy")
-                            {type (get {false 0 true 1} (= value "true"))}))))
+                          (case type
+                            "temperature" {type (-> value
+                                                    (Integer/parseInt)
+                                                    (/ 10)
+                                                    (float))}
+                            "humidity" {type (-> value
+                                                 (Integer/parseInt))}
+                            "occupancy" {type (get {false 0 true 1} (= value "true"))}))))
                      (into {})
                      (walk/keywordize-keys))]
     {:name (str/lower-case name) :metrics metrics}))

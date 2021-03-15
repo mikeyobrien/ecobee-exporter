@@ -21,6 +21,24 @@ jobs:
         username: ${{ secrets.USERNAME }}
         password: ${{ secrets.PASSWORD }}
         logout: true
+
+    - name: Setup Java
+      uses: actions/setup-java@v1
+      with:
+        java-version: '11' # The JDK version to make available on the path.
+        java-package: jdk # (jre, jdk, or jdk+fx) - defaults to jdk
+        architecture: x64 # (x64 or x86) - defaults to x64
+
+    - name: Setup Clojure
+      # You may pin to the exact commit or the version.
+      # uses: DeLaGuardo/setup-clojure@91054c3b9dc15fdc6a2f45be47405d891e672ef0
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        cli: '1.10.3'
+
+    - name: Build jar
+      run: clojure -M:uberdeps
+
     - name: Docker Buildx
       # You may pin to the exact commit or the version.
       # uses: crazy-max/ghaction-docker-buildx@126d331dc69f4a1aa02452e374835e6a5d565613

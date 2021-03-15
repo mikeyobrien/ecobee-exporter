@@ -13,14 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Docker Login
-      # You may pin to the exact commit or the version.
-      # uses: docker/login-action@f3364599c6aa293cdc2b8391b1b56d0c30e45c8a
-      uses: docker/login-action@v1.8.0
-      with:
-        username: ${{ secrets.USERNAME }}
-        password: ${{ secrets.PASSWORD }}
-        logout: true
+    - uses: actions/checkout@v2
 
     - name: Setup Java
       uses: actions/setup-java@v1
@@ -34,10 +27,12 @@ jobs:
       # uses: DeLaGuardo/setup-clojure@91054c3b9dc15fdc6a2f45be47405d891e672ef0
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.10.3'
+        cli: '1.10.2.796'
 
     - name: Build jar
-      run: clojure -M:uberdeps
+      run: |
+        ls -laht
+        clojure -M:uberdeps
 
     - name: Docker Buildx
       # You may pin to the exact commit or the version.
@@ -48,10 +43,17 @@ jobs:
         buildx-version: latest
         # QEMU static binaries Docker image version. Example: 4.2.0-7
         qemu-version: latest
-        
-    - uses: actions/checkout@v2
-    - name: Build the Docker image
-      run: docker buildx build --push --platform linux/arm64,linux/amd64 --tag mikeybrien/ecobee-exporter:latest .
 
-      
-   
+    - name: Docker Login
+      # You may pin to the exact commit or the version.
+      # uses: docker/login-action@f3364599c6aa293cdc2b8391b1b56d0c30e45c8a
+      uses: docker/login-action@v1.8.0
+      with:
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+
+    - name: Build the Docker image
+      run: |
+        docker buildx build --output "type=image,push=true" \
+        --platform linux/arm64,linux/amd64 \
+        --tag ${{ secrets.USERNAME }}/ecobee-exporter:latest .

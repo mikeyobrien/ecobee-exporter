@@ -75,7 +75,7 @@
         resp (client/get uri {:headers {"Authorization" (format "Bearer %s"
                                                                 access-token)}
                               :as :json
-                              :throw-exceptions false})]
+                              :throw-exceptions true})]
     (when (= 200 (:status resp))
       (-> resp
           (get-in [:body :thermostatList])
